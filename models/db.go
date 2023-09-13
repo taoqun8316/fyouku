@@ -8,7 +8,7 @@ import (
 func Init() {
 	orm.RegisterDataBase("default", "mysql", "root:root@/fyouku?charset=utf8", 30)
 
-	orm.RegisterModel(new(User), new(Advert), new(Video), new(Comment))
+	orm.RegisterModel(new(User), new(Advert), new(Video), new(Comment), new(Message), new(MessageUser))
 
 	orm.RunSyncdb("default", false, true)
 }

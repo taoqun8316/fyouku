@@ -21,5 +21,9 @@ func init() {
 	beego.Router("/channel/type", &controllers.BaseController{}, "get:ChannelType")     //获取频道下类型
 
 	beego.Router("/comment/list", &controllers.CommentController{}, "get:List") //获取评论列表
-	beego.Router("/comment/save", &controllers.CommentController{}, "get:List") //发表评论功能
+	beego.Router("/comment/save", &controllers.CommentController{}, "get:Save") //发表评论功能
+
+	beego.Router("/channel/top", &controllers.TopController{}, "get:List") //频道排行榜接口
+	beego.Router("/type/top", &controllers.TopController{}, "get:Save")    //类型排行榜接口
+
 }

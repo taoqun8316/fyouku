@@ -4,6 +4,8 @@ import (
 	"ffyouku/models"
 	"github.com/astaxie/beego"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 type UserController struct {
@@ -79,6 +81,35 @@ func (this *UserController) LoginDo() {
 		this.ServeJSON()
 	} else {
 		this.Data["json"] = ReturnError(4004, "手机号或密码不正确")
+		this.ServeJSON()
+	}
+}
+
+// SendMessageDo 批量发送消息接口
+func (this *UserController) SendMessageDo() {
+	uids := this.GetString("uids")
+	content := this.GetString("content")
+
+	if uids == "" {
+		this.Data["json"] = ReturnError(4001, "请填写接收人")
+		this.ServeJSON()
+	}
+	if content == "" {
+		this.Data["json"] = ReturnError(4002, "请填写发送内容")
+		this.ServeJSON()
+	}
+
+	mid, err := models.SendMessageDo(content)
+	if err != nil {
+		uidConfig := strings.Split(uids, ",")
+		for _, v := range uidConfig {
+			userId, _ := strconv.ParseInt(v, 10, 10)
+			models.SendMessageUser(userId, mid)
+		}
+		this.Data["json"] = ReturnSuccess(0, "发送消息成功", "", 0)
+		this.ServeJSON()
+	} else {
+		this.Data["json"] = ReturnError(4004, "发送消息失败")
 		this.ServeJSON()
 	}
 }
