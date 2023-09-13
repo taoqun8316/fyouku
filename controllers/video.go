@@ -28,7 +28,7 @@ func (this *VideoController) ChannelAdvert() {
 	}
 }
 
-// 频道页-获取正在热播
+// ChannelHotList 频道页-获取正在热播
 func (this *VideoController) ChannelHotList() {
 	channelId, _ := this.GetInt("channelId")
 
@@ -88,6 +88,45 @@ func (this *VideoController) ChannelRecommendTypeList() {
 	}
 
 	num, videos, err := models.GetChannelRecommendTypeList(channelId, typeId)
+	if err == nil {
+		this.Data["json"] = ReturnSuccess(0, "success", videos, num)
+		this.ServeJSON()
+	} else {
+		this.Data["json"] = ReturnError(4004, "没有相关内容")
+		this.ServeJSON()
+	}
+}
+
+// ChannelVideos 根据传入参数获取视频列表
+func (this *VideoController) ChannelVideos() {
+	channelId, _ := this.GetInt("channelId")
+	regionId, _ := this.GetInt("regionId")
+	typeId, _ := this.GetInt("typeId")
+	end := this.GetString("end")
+	sort := this.GetString("sort")
+	limit, _ := this.GetInt("limit")
+	offset, _ := this.GetInt("offset")
+
+	if channelId == 0 {
+		this.Data["json"] = ReturnError(4001, "必须指定频道")
+		this.ServeJSON()
+	}
+
+	if regionId == 0 {
+		this.Data["json"] = ReturnError(4002, "必须指定地区")
+		this.ServeJSON()
+	}
+
+	if typeId == 0 {
+		this.Data["json"] = ReturnError(4003, "必须指定类型")
+		this.ServeJSON()
+	}
+
+	if limit == 0 {
+		limit = 12
+	}
+
+	num, videos, err := models.GetChannelVideoList(channelId, typeId, regionId, end, sort, offset, limit)
 	if err == nil {
 		this.Data["json"] = ReturnSuccess(0, "success", videos, num)
 		this.ServeJSON()
