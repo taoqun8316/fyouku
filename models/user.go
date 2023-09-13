@@ -10,10 +10,12 @@ func init() {
 	orm.RegisterDataBase("default", "mysql", "root:root@/fyouku?charset=utf8", 30)
 
 	orm.RegisterModel(new(User))
+
+	orm.RunSyncdb("default", false, true)
 }
 
 type User struct {
-	Id       string
+	Id       int
 	Name     string
 	Password string
 	Status   int

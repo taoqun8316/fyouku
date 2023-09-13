@@ -2,10 +2,9 @@ package main
 
 import (
 	_ "ffyouku/routers"
-	beego "github.com/beego/beego/v2/server/web"
+	"github.com/astaxie/beego"
 )
 
 func main() {
 	beego.Run()
 }
-

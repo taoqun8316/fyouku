@@ -3,12 +3,8 @@ package controllers
 import (
 	"crypto/md5"
 	"encoding/hex"
-	beego "github.com/beego/beego/v2/server/web"
+	"github.com/astaxie/beego"
 )
-
-type CommonController struct {
-	beego.Controller
-}
 
 type JsonStruct struct {
 	Code  int         `json:code`
@@ -17,7 +13,7 @@ type JsonStruct struct {
 	Count int64       `json:count`
 }
 
-func (*CommonController) ReturnSuccess(code int, msg interface{}, item interface{}, count int64) (json *JsonStruct) {
+func ReturnSuccess(code int, msg interface{}, item interface{}, count int64) (json *JsonStruct) {
 	json = &JsonStruct{
 		Code:  code,
 		Msg:   msg,
@@ -27,7 +23,7 @@ func (*CommonController) ReturnSuccess(code int, msg interface{}, item interface
 	return
 }
 
-func (*CommonController) ReturnError(code int, msg interface{}) (json *JsonStruct) {
+func ReturnError(code int, msg interface{}) (json *JsonStruct) {
 	json = &JsonStruct{
 		Code: code,
 		Msg:  msg,
@@ -35,9 +31,8 @@ func (*CommonController) ReturnError(code int, msg interface{}) (json *JsonStruc
 	return
 }
 
-func (*CommonController) MD5V(password string) string {
+func MD5V(password string) string {
 	h := md5.New()
-	md5code, _ := beego.AppConfig.String("md5code")
-	h.Write([]byte(password + md5code))
+	h.Write([]byte(password + beego.AppConfig.String("md5code")))
 	return hex.EncodeToString(h.Sum(nil))
 }
