@@ -2,17 +2,8 @@ package models
 
 import (
 	"github.com/astaxie/beego/orm"
-	_ "github.com/go-sql-driver/mysql"
 	"time"
 )
-
-func init() {
-	orm.RegisterDataBase("default", "mysql", "root:root@/fyouku?charset=utf8", 30)
-
-	orm.RegisterModel(new(User))
-
-	orm.RunSyncdb("default", false, true)
-}
 
 type User struct {
 	Id       int
@@ -27,9 +18,9 @@ type User struct {
 func IsUserMobile(mobile string) bool {
 	o := orm.NewOrm()
 	user := User{Mobile: mobile}
-	err := o.Read(&user, "Mobile")
+	err := o.Read(&user)
 
-	if err != orm.ErrNoRows {
+	if err == orm.ErrNoRows {
 		return false
 	} else if err == orm.ErrMissPK {
 		return false
@@ -49,4 +40,17 @@ func UserSave(mobile, password string) error {
 
 	_, err := o.Insert(&user)
 	return err
+}
+
+func IsMobileLogin(mobile, password string) (int, string) {
+	o := orm.NewOrm()
+	var user User
+
+	err := o.QueryTable("user").Filter("mobile", mobile).Filter("password", password).One(&user)
+	if err == orm.ErrNoRows {
+		return 0, ""
+	} else if err == orm.ErrMissPK {
+		return 0, ""
+	}
+	return user.Id, user.Name
 }
