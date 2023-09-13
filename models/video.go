@@ -24,6 +24,17 @@ type Video struct {
 	Comment        int
 }
 
+type Episodes struct {
+	Id      int
+	Title   string
+	AddTime int64
+	Num     int
+	VideoId int
+	PlayUrl string
+	Status  int
+	Comment int
+}
+
 func GetChannelHotList(channelId int) (int64, []Video, error) {
 	o := orm.NewOrm()
 	var videos []Video
@@ -81,4 +92,21 @@ func GetChannelVideoList(channelId int, typeId int, regionId int, end string, so
 	_, err := qs.Values(&videos, "id", "title", "sub_title", "add_time", "img", "img1", "episodes_count", "is_end")
 
 	return num, videos, err
+}
+
+func GetVideoInfo(videoId int) (Video, error) {
+	o := orm.NewOrm()
+	video := Video{Id: videoId}
+	err := o.Read(&video)
+	if err != nil {
+		return Video{}, err
+	}
+	return video, nil
+}
+
+func GetVideoEpisodesList(videoId int) (int64, []Episodes, error) {
+	o := orm.NewOrm()
+	var episodes []Episodes
+	num, err := o.QueryTable("video_episodes").Filter("status", 1).Filter("video_id", videoId).OrderBy("-num").All(&episodes)
+	return num, episodes, err
 }

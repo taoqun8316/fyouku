@@ -15,6 +15,14 @@ type User struct {
 	Avatar   string
 }
 
+type UserInfo struct {
+	Id      int    `json:"id"`
+	Name    string `json:"name"`
+	Mobile  string `json:"mobile"`
+	AddTime int64  `json:"addTime"`
+	Avatar  string `json:"avatar"`
+}
+
 func IsUserMobile(mobile string) bool {
 	o := orm.NewOrm()
 	user := User{Mobile: mobile}
@@ -53,4 +61,14 @@ func IsMobileLogin(mobile, password string) (int, string) {
 		return 0, ""
 	}
 	return user.Id, user.Name
+}
+
+func GetUserInfo(uid int) (UserInfo, error) {
+	o := orm.NewOrm()
+	user := UserInfo{Id: uid}
+	err := o.Read(&user)
+	if err != nil {
+		return UserInfo{}, err
+	}
+	return user, nil
 }
