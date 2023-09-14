@@ -25,7 +25,7 @@ func (this *TopController) ChannelTop() {
 	this.ServeJSON()
 }
 
-func (this *TopController) typeTop() {
+func (this *TopController) TypeTop() {
 	typeId, _ := this.GetInt("typeId")
 
 	if typeId == 0 {
