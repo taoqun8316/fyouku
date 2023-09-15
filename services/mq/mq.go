@@ -194,3 +194,111 @@ func ConsumerEx(exchange string, types string, routingKey string, callback Callb
 	fmt.Println("waiting for messages")
 	<-forever
 }
+
+// 死信队列消费端
+func ConsumerDlx(exchangeA string, queueAName string, exchangeB string, queueBName string, ttl int, callback Callback) {
+	//建立连接
+	conn, err := Connect()
+	defer conn.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//创建通道
+	channel, err := conn.Channel()
+	defer channel.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//创建A交换机
+	//A队列
+	//A交换机和A队列
+	err = channel.ExchangeDeclare(
+		exchangeA,
+		"fanout",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	queueA, err := channel.QueueDeclare(queueAName, true, false, false, false, amqp.Table{
+		"x-message-ttl":          ttl,
+		"x-dead-letter-exchange": exchangeB,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = channel.QueueUnbind(queueA.Name, "", exchangeA, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//创建B交换机
+	//创建B队列
+	//创建B交换机和B队列
+	err = channel.ExchangeDeclare(exchangeB, "fanout", true, false, false, false, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	queueB, err := channel.QueueDeclare(queueBName, true, false, false, false, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = channel.QueueUnbind(queueB.Name, "", exchangeB, nil)
+	if err != nil {
+		return
+	}
+
+	//接收消息
+	msgs, err := channel.Consume(queueBName, "", false, false, false, false, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	forever := make(chan bool)
+	go func() {
+		for d := range msgs {
+			s := BytesToString(&(d.Body))
+			callback(*s)
+			d.Ack(false)
+		}
+	}()
+	fmt.Println("waiting for messages")
+	<-forever
+}
+
+// 死信队列生产端
+func PublishDlx(exchangeA string, body string) error {
+	//建立连接
+	conn, err := Connect()
+	defer conn.Close()
+	if err != nil {
+		return err
+	}
+
+	//创建通道
+	channel, err := conn.Channel()
+	defer channel.Close()
+	if err != nil {
+		return err
+	}
+
+	err = channel.Publish(exchangeA, "", false, false, amqp.Publishing{
+		DeliveryMode: amqp.Persistent,
+		ContentType:  "text/plain",
+		Body:         []byte(body),
+	})
+	return err
+}

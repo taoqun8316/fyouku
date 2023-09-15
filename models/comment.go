@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"ffyouku/services/mq"
 	"github.com/astaxie/beego/orm"
 	"time"
 )
@@ -43,5 +45,13 @@ func SaveContent(content string, uid, episodesId, videoId int) error {
 	o.Raw("update video set comment=comment+1 where id=?", videoId).Exec()
 	//修改剧集的总论数
 	o.Raw("update video_episodes set comment=comment+1 where id=?", episodesId).Exec()
+
+	//更新redis排行榜
+	videoObj := map[string]int{
+		"VideoId": videoId,
+	}
+	videoJson, _ := json.Marshal(videoObj)
+	mq.Publish("", "fyouku_top", string(videoJson))
+
 	return nil
 }
