@@ -29,6 +29,22 @@ type Video struct {
 	Comment        int
 }
 
+type VideoInfo struct {
+	Id            int
+	Title         string
+	SubTitle      string
+	AddTime       int64
+	Img           string
+	Img1          string
+	ChannelId     int
+	Status        int
+	IsEnd         int
+	IsHot         int
+	IsRecommend   int
+	Comment       int
+	EpisodesCount int
+}
+
 type Episodes struct {
 	Id      int
 	Title   string
@@ -172,17 +188,105 @@ func RedisGetVideoEpisodesList(videoId int) (int64, []Episodes, error) {
 	return num, episodes, err
 }
 
-func GetChannelTop(channelId int) (int64, []Video, error) {
-	o := orm.NewOrm()
-	var videos []Video
-	num, err := o.QueryTable("video").Filter("status", 1).Filter("channel_id", channelId).OrderBy("-comment").Limit(10).All(&videos)
+func RedisGetChannelTop(channelId int) (int64, []VideoInfo, error) {
+	var (
+		videos []VideoInfo
+		num    int64
+		err    error
+	)
+	conn := redisClient.PoolConnect()
+	defer conn.Close()
+	//定义redis key
+	redisKey := "video:top:channel:channelId:" + strconv.Itoa(channelId)
+	//判断redis中是否存在
+	exists, err := redis.Bool(conn.Do("exists", redisKey))
+
+	if exists {
+		num = 0
+		res, _ := redis.Values(conn.Do("zrevrange", redisKey, "0", "10", "WITHSCORES"))
+		for k, v := range res {
+			if k%2 == 0 {
+				videoId, err := strconv.Atoi(string(v.([]byte)))
+				videoInfo, err := RedisGetVideoInfo(videoId)
+				if err == nil {
+					var videoDataInfo VideoInfo
+					videoDataInfo.Id = videoInfo.Id
+					videoDataInfo.Img = videoInfo.Img
+					videoDataInfo.Img1 = videoInfo.Img1
+					videoDataInfo.IsEnd = videoInfo.IsEnd
+					videoDataInfo.SubTitle = videoInfo.SubTitle
+					videoDataInfo.Title = videoInfo.Title
+					videoDataInfo.AddTime = videoInfo.AddTime
+					videoDataInfo.Comment = videoInfo.Comment
+					videoDataInfo.EpisodesCount = videoInfo.EpisodesCount
+					videos = append(videos, videoDataInfo)
+					num++
+				}
+			}
+		}
+	} else {
+		o := orm.NewOrm()
+		num, err = o.QueryTable("video").Filter("status", 1).Filter("channel_id", channelId).OrderBy("-comment").Limit(10).All(&videos)
+		if err == nil {
+			for _, v := range videos {
+				jsonValue, _ := json.Marshal(v)
+				conn.Do("rpush", redisKey, jsonValue)
+			}
+			conn.Do("expire", redisKey, 86400)
+			return num, videos, nil
+		}
+	}
 	return num, videos, err
 }
 
-func GetTypeTop(typeId int) (int64, []Video, error) {
-	o := orm.NewOrm()
-	var videos []Video
-	num, err := o.QueryTable("video").Filter("status", 1).Filter("type_id", typeId).OrderBy("-comment").Limit(10).All(&videos)
+func RedisGetTypeTop(typeId int) (int64, []VideoInfo, error) {
+	var (
+		videos []VideoInfo
+		num    int64
+		err    error
+	)
+	conn := redisClient.PoolConnect()
+	defer conn.Close()
+	//定义redis key
+	redisKey := "video:top:type:typeId:" + strconv.Itoa(typeId)
+	//判断redis中是否存在
+	exists, err := redis.Bool(conn.Do("exists", redisKey))
+
+	if exists {
+		num = 0
+		res, _ := redis.Values(conn.Do("zrevrange", redisKey, "0", "10", "WITHSCORES"))
+		for k, v := range res {
+			if k%2 == 0 {
+				videoId, err := strconv.Atoi(string(v.([]byte)))
+				videoInfo, err := RedisGetVideoInfo(videoId)
+				if err == nil {
+					var videoDataInfo VideoInfo
+					videoDataInfo.Id = videoInfo.Id
+					videoDataInfo.Img = videoInfo.Img
+					videoDataInfo.Img1 = videoInfo.Img1
+					videoDataInfo.IsEnd = videoInfo.IsEnd
+					videoDataInfo.SubTitle = videoInfo.SubTitle
+					videoDataInfo.Title = videoInfo.Title
+					videoDataInfo.AddTime = videoInfo.AddTime
+					videoDataInfo.Comment = videoInfo.Comment
+					videoDataInfo.EpisodesCount = videoInfo.EpisodesCount
+					videos = append(videos, videoDataInfo)
+					num++
+				}
+			}
+		}
+	} else {
+		o := orm.NewOrm()
+		num, err := o.QueryTable("video").Filter("status", 1).Filter("type_id", typeId).OrderBy("-comment").Limit(10).All(&videos)
+		if err == nil {
+			for _, v := range videos {
+				jsonValue, _ := json.Marshal(v)
+				conn.Do("rpush", redisKey, jsonValue)
+			}
+			conn.Do("expire", redisKey, 86400)
+			return num, videos, nil
+		}
+	}
 	return num, videos, err
 }
 

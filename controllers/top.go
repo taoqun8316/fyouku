@@ -16,7 +16,7 @@ func (this *TopController) ChannelTop() {
 		this.Data["json"] = ReturnError(4001, "必须指定频道")
 		this.ServeJSON()
 	}
-	num, videos, err := models.GetChannelTop(channelId)
+	num, videos, err := models.RedisGetChannelTop(channelId)
 	if err != nil {
 		this.Data["json"] = ReturnError(4004, "没有相关内容")
 		this.ServeJSON()
@@ -32,7 +32,7 @@ func (this *TopController) TypeTop() {
 		this.Data["json"] = ReturnError(4001, "必须指定内型")
 		this.ServeJSON()
 	}
-	num, videos, err := models.GetTypeTop(typeId)
+	num, videos, err := models.RedisGetTypeTop(typeId)
 	if err != nil {
 		this.Data["json"] = ReturnError(4004, "没有相关内容")
 		this.ServeJSON()
