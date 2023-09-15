@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"ffyouku/models"
+	"ffyouku/utils"
 	"github.com/astaxie/beego"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -112,4 +114,31 @@ func (this *UserController) SendMessageDo() {
 		this.Data["json"] = ReturnError(4004, "发送消息失败")
 		this.ServeJSON()
 	}
+}
+
+// 上传视频文件
+func (this *UserController) UploadVideo() {
+	var (
+		err   error
+		title string
+	)
+	r := this.Ctx.Request
+	uid := r.FormValue("uid")
+	file, header, _ := r.FormFile("file") //获取文件流
+	b, _ := ioutil.ReadAll(file)          //转换文件流为二进制
+
+	//生成文件名
+	filename := strings.Split(header.Filename, ".")
+	filename[0] = utils.GetVideoName(uid)
+	//文件保存的位置
+	var fileDir = "/Users/taoqun/code_project/go_project/fyouku/static/uploads" + filename[0] + "." + filename[1]
+	//播放地址
+	var playUrl = "/static/uploads/" + filename[0] + "." + filename[1]
+	err = ioutil.WriteFile(fileDir, b, 0777)
+	if err != nil {
+		title = utils.ReturnError(500, "上传失败")
+	} else {
+		title = utils.ReturnSuccess(0, playUrl, nil, 1)
+	}
+	this.Ctx.WriteString(title)
 }

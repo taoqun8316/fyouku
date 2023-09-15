@@ -16,6 +16,8 @@ func init() {
 	beego.Router("/channel/video", &controllers.VideoController{}, "get:ChannelVideos")                         //根据传入参数获取视频列表
 	beego.Router("/video/info", &controllers.VideoController{}, "get:VideoInfo")                                //获取视频详情
 	beego.Router("/video/episodes/list", &controllers.VideoController{}, "get:VideoEpisodesList")               //获取视频剧集列表
+	beego.Router("/user/video", &controllers.VideoController{}, "get:UserVideo")                                //我的视频管理
+	beego.Router("/video/saves", &controllers.VideoController{}, "post:VideoSave")                              //保存用户上传视频信息
 
 	beego.Router("/channel/region", &controllers.BaseController{}, "get:ChannelRegion") //获取频道下地区
 	beego.Router("/channel/type", &controllers.BaseController{}, "get:ChannelType")     //获取频道下类型
@@ -25,5 +27,8 @@ func init() {
 
 	beego.Router("/channel/top", &controllers.TopController{}, "get:ChannelTop") //频道排行榜接口
 	beego.Router("/type/top", &controllers.TopController{}, "get:TypeTop")       //类型排行榜接口
+
+	beego.Router("/barrage/ws", &controllers.BarrageController{}, "get:BarrageWs") //获取弹幕信息接口
+	beego.Router("/send/message", &controllers.BarrageController{}, "post:Save")   //批量发送消息接口
 
 }

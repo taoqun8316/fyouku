@@ -171,3 +171,50 @@ func (this *VideoController) VideoEpisodesList() {
 		this.ServeJSON()
 	}
 }
+
+// UserVideo 我的视频管理
+func (this *VideoController) UserVideo() {
+	uid, _ := this.GetInt("uid")
+	if uid == 0 {
+		this.Data["json"] = ReturnError(4001, "必须指定用户")
+		this.ServeJSON()
+	}
+
+	num, videos, err := models.GetUserVideo(uid)
+	if err == nil {
+		this.Data["json"] = ReturnSuccess(0, "success", videos, num)
+		this.ServeJSON()
+	} else {
+		this.Data["json"] = ReturnError(4004, "没有相关内容")
+		this.ServeJSON()
+	}
+}
+
+// VideoSave 保存用户上传视频信息
+func (this *VideoController) VideoSave() {
+	playUrl := this.GetString("playUrl")
+	title := this.GetString("title")
+	subTitle := this.GetString("subTitle")
+	channelId, _ := this.GetInt("channelId")
+	typeId, _ := this.GetInt("typeId")
+	regionId, _ := this.GetInt("regionId")
+	uid, _ := this.GetInt("uid")
+
+	if uid == 0 {
+		this.Data["json"] = ReturnError(4001, "必须指定用户")
+		this.ServeJSON()
+	}
+
+	if playUrl == "" {
+		this.Data["json"] = ReturnError(4002, "视频地址不能为空")
+		this.ServeJSON()
+	}
+	err := models.SaveVideo(title, subTitle, channelId, regionId, typeId, playUrl, uid)
+	if err == nil {
+		this.Data["json"] = ReturnSuccess(0, "success", "", 0)
+		this.ServeJSON()
+	} else {
+		this.Data["json"] = ReturnError(4004, "保存失败")
+		this.ServeJSON()
+	}
+}

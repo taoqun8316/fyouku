@@ -1,7 +1,11 @@
 package models
 
 import (
+	redisClient "ffyouku/services/redis"
 	"github.com/astaxie/beego/orm"
+	"github.com/garyburd/redigo/redis"
+	"strconv"
+	"time"
 )
 
 type Video struct {
@@ -17,7 +21,7 @@ type Video struct {
 	RegionId       int
 	UserId         int
 	EpisodesCount  int
-	EpisodesUpdate int
+	EpisodesUpdate int64
 	IsEnd          int
 	IsHot          int
 	IsRecommend    int
@@ -104,6 +108,34 @@ func GetVideoInfo(videoId int) (Video, error) {
 	return video, nil
 }
 
+// 增加redis缓存-获取视频详情
+func RedisGetVideoInfo(videoId int) (Video, error) {
+	var video Video
+	conn := redisClient.PoolConnect()
+	defer conn.Close()
+	//定义redis key
+	redisKey := "video:id:" + strconv.Itoa(videoId)
+	//判断redis中是否存在
+	exists, err := redis.Bool(conn.Do("exists", redisKey))
+
+	if exists {
+		values, _ := redis.Values(conn.Do("hgetall", redisKey))
+		err = redis.ScanStruct(values, &video)
+	} else {
+		o := orm.NewOrm()
+		video.Id = videoId
+		err = o.Read(&video)
+		if err == nil {
+			//保存redis
+			_, err = conn.Do("hmset", redis.Args{redisKey}.AddFlat(video))
+			if err == nil {
+				conn.Do("expire", redisKey, 86400)
+			}
+		}
+	}
+	return video, err
+}
+
 func GetVideoEpisodesList(videoId int) (int64, []Episodes, error) {
 	o := orm.NewOrm()
 	var episodes []Episodes
@@ -123,4 +155,40 @@ func GetTypeTop(typeId int) (int64, []Video, error) {
 	var videos []Video
 	num, err := o.QueryTable("video").Filter("status", 1).Filter("type_id", typeId).OrderBy("-comment").Limit(10).All(&videos)
 	return num, videos, err
+}
+
+func GetUserVideo(uid int) (int64, []Video, error) {
+	o := orm.NewOrm()
+	var videos []Video
+	num, err := o.QueryTable("video").Filter("user_id", uid).OrderBy("-add_time").Limit(10).All(&videos)
+	return num, videos, err
+}
+
+func SaveVideo(title string, subTitle string, channelId int, regionId int, typeId int, playUrl string, uid int) error {
+	o := orm.NewOrm()
+	var video Video
+	current := time.Now().Unix()
+
+	video.Title = title
+	video.SubTitle = subTitle
+	video.ChannelId = channelId
+	video.RegionId = regionId
+	video.TypeId = typeId
+	video.Img = ""
+	video.Img1 = ""
+	video.EpisodesCount = 1
+	video.IsEnd = 1
+	video.Status = 1
+	video.UserId = uid
+	video.Comment = 0
+	video.EpisodesUpdate = current
+	video.AddTime = current
+	videoId, err := o.Insert(video)
+
+	if err == nil {
+		//修改视频的总论数
+		o.Raw("insert into video_episodes (title,add_time,num,video_id,play_url,status,comment) values(?,?,?,?,?,?,?,?)",
+			subTitle, current, 1, videoId, playUrl, 1, 0).Exec()
+	}
+	return err
 }
