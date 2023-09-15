@@ -10,6 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/smartystreets/goconvey v1.6.4
+	github.com/streadway/amqp v1.1.0
 )
 
 require (
