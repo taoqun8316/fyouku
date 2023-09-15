@@ -1,7 +1,10 @@
 package models
 
 import (
+	redisClient "ffyouku/services/redis"
 	"github.com/astaxie/beego/orm"
+	"github.com/garyburd/redigo/redis"
+	"strconv"
 	"time"
 )
 
@@ -63,12 +66,26 @@ func IsMobileLogin(mobile, password string) (int, string) {
 	return user.Id, user.Name
 }
 
-func GetUserInfo(uid int) (UserInfo, error) {
-	o := orm.NewOrm()
-	user := UserInfo{Id: uid}
-	err := o.Read(&user)
-	if err != nil {
-		return UserInfo{}, err
+func RedisGetUserInfo(uid int) (UserInfo, error) {
+	var user UserInfo
+	conn := redisClient.PoolConnect()
+	redisKey := "user:id:" + strconv.Itoa(uid)
+	defer conn.Close()
+	exists, err := redis.Bool(conn.Do("exists", redisKey))
+	if exists {
+		res, _ := redis.Values(conn.Do("hgetall", redisKey))
+		err = redis.ScanStruct(res, &user)
+	} else {
+		o := orm.NewOrm()
+		user.Id = uid
+		err = o.Read(&user)
+		if err == nil {
+			_, err = conn.Do("hmset", user)
+			if err == nil {
+				conn.Do("expire", redisKey, 86400)
+			}
+			return user, nil
+		}
 	}
-	return user, nil
+	return user, err
 }

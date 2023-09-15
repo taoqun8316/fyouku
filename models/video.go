@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	redisClient "ffyouku/services/redis"
 	"github.com/astaxie/beego/orm"
 	"github.com/garyburd/redigo/redis"
@@ -136,10 +137,38 @@ func RedisGetVideoInfo(videoId int) (Video, error) {
 	return video, err
 }
 
-func GetVideoEpisodesList(videoId int) (int64, []Episodes, error) {
-	o := orm.NewOrm()
-	var episodes []Episodes
-	num, err := o.QueryTable("video_episodes").Filter("status", 1).Filter("video_id", videoId).OrderBy("-num").All(&episodes)
+func RedisGetVideoEpisodesList(videoId int) (int64, []Episodes, error) {
+	var (
+		episodes []Episodes
+		num      int64
+		err      error
+	)
+	conn := redisClient.PoolConnect()
+	redisKey := "video:episodes:videoId:" + strconv.Itoa(videoId)
+	defer conn.Close()
+	exists, err := redis.Bool(conn.Do("exists", redisKey))
+	if exists {
+		num, err = redis.Int64(conn.Do("llen", redisKey))
+		if err == nil {
+			values, _ := redis.Values(conn.Do("lrange", redisKey, "0", "-1"))
+			var episodesInfo Episodes
+			for _, v := range values {
+				json.Unmarshal(v.([]byte), &episodesInfo)
+				episodes = append(episodes, episodesInfo)
+			}
+		}
+	} else {
+		o := orm.NewOrm()
+		num, err = o.QueryTable("video_episodes").Filter("status", 1).Filter("video_id", videoId).OrderBy("-num").All(&episodes)
+		if err == nil {
+			for _, v := range episodes {
+				jsonValue, _ := json.Marshal(v)
+				conn.Do("rpush", redisKey, jsonValue)
+			}
+			conn.Do("expire", redisKey, 86400)
+			return num, episodes, nil
+		}
+	}
 	return num, episodes, err
 }
 
