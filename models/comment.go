@@ -53,5 +53,13 @@ func SaveContent(content string, uid, episodesId, videoId int) error {
 	videoJson, _ := json.Marshal(videoObj)
 	mq.Publish("", "fyouku_top", string(videoJson))
 
+	//延迟增加评论数
+	videoCountObj := map[string]int{
+		"VideoId":    videoId,
+		"EpisodesId": episodesId,
+	}
+	videCountJson, _ := json.Marshal(videoCountObj)
+	mq.PublishDlx("fyouku.comment.count", string(videCountJson))
+
 	return nil
 }
