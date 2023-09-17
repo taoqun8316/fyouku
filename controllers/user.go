@@ -87,6 +87,11 @@ func (this *UserController) LoginDo() {
 	}
 }
 
+type sendData struct {
+	UserId    int
+	MessageId int64
+}
+
 // SendMessageDo 批量发送消息接口
 func (this *UserController) SendMessageDo() {
 	uids := this.GetString("uids")
@@ -101,20 +106,46 @@ func (this *UserController) SendMessageDo() {
 		this.ServeJSON()
 	}
 
-	mid, err := models.SendMessageDo(content)
-	if err != nil {
+	messageId, err := models.SendMessageDo(content)
+	if err == nil {
 		uidConfig := strings.Split(uids, ",")
-		for _, v := range uidConfig {
-			userId, _ := strconv.Atoi(v)
-			//models.SendMessageUser(userId, mid)
-			models.SendMessageUserMq(userId, mid)
+		count := len(uidConfig)
+		sendChan := make(chan sendData, count)
+		closeChan := make(chan bool, count)
+
+		go func() {
+			var data sendData
+			for _, v := range uidConfig {
+				userId, _ := strconv.Atoi(v)
+				data.UserId = userId
+				data.MessageId = messageId
+				sendChan <- data
+			}
+			close(sendChan)
+		}()
+
+		for i := 0; i < 5; i++ {
+			go sendMessageFunc(sendChan, closeChan)
 		}
+
+		for i := 0; i < 5; i++ {
+			<-closeChan
+		}
+		close(closeChan)
+
 		this.Data["json"] = ReturnSuccess(0, "发送消息成功", "", 0)
 		this.ServeJSON()
 	} else {
 		this.Data["json"] = ReturnError(4004, "发送消息失败")
 		this.ServeJSON()
 	}
+}
+
+func sendMessageFunc(sendChan chan sendData, closeChan chan bool) {
+	for t := range sendChan {
+		models.SendMessageUserMq(t.UserId, t.MessageId)
+	}
+	closeChan <- true
 }
 
 // 上传视频文件

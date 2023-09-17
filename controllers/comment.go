@@ -38,6 +38,35 @@ func (this *CommentController) List() {
 	if err == nil {
 		var data []CommentInfo
 		var commentInfo CommentInfo
+
+		//获取uid channel
+		uidChan := make(chan int, 12)
+		closeChan := make(chan bool, 12)
+		resChan := make(chan models.UserInfo)
+		//把获取到的uid放到channel中
+		go func() {
+			for _, v := range comments {
+				uidChan <- v.UserId
+			}
+			close(closeChan)
+		}()
+		//处理uid channel中的信息
+		for i := 0; i < 5; i++ {
+			go chanGetUserInfo(uidChan, resChan, closeChan)
+		}
+		//判断是否执行完成，信息集合
+		go func() {
+			for i := 0; i < 5; i++ {
+				<-closeChan
+			}
+			close(resChan)
+			close(closeChan)
+		}()
+
+		userInfoMap := make(map[int]models.UserInfo)
+		for r := range resChan {
+			userInfoMap[r.Id] = r
+		}
 		for _, v := range comments {
 			commentInfo.Id = v.Id
 			commentInfo.Content = v.Content
@@ -47,8 +76,7 @@ func (this *CommentController) List() {
 			commentInfo.Stamp = v.Stamp
 			commentInfo.PraiseCount = v.PraiseCount
 			//获取用户信息
-			commentInfo.UserInfo, _ = models.RedisGetUserInfo(v.UserId)
-
+			commentInfo.UserInfo, _ = userInfoMap[v.UserId]
 			data = append(data, commentInfo)
 		}
 		this.Data["json"] = ReturnSuccess(0, "请求数据成功", data, num)
@@ -57,6 +85,16 @@ func (this *CommentController) List() {
 		this.Data["json"] = ReturnError(4004, "请求数据失败")
 		this.ServeJSON()
 	}
+}
+
+func chanGetUserInfo(uidChan chan int, resChan chan models.UserInfo, closeChan chan bool) {
+	for uid := range uidChan {
+		res, err := models.RedisGetUserInfo(uid)
+		if err == nil {
+			resChan <- res
+		}
+	}
+	closeChan <- true
 }
 
 // Save 发表评论功能
